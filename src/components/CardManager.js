@@ -1,16 +1,13 @@
 import './CardManager.css';
 import React, { useState } from "react";
 import { useLocalStorage } from "../hooks/useLocalStorage";
-import { useNavigate } from "react-router-dom";
 
 function CardManager() {
     const [cards, setCards] = useLocalStorage("cards", []); // Danh sách thẻ
-    const [templates] = useLocalStorage("templates", []); // Danh sách mẫu thẻ
     const [selectedCardId, setSelectedCardId] = useState(null); // Thẻ đang chọn
+    const [editingCardId, setEditingCardId] = useState(null); // Thẻ đang chỉnh sửa
     const [steps, setSteps] = useState([]); // Các bước của thẻ
     const [selectedStepId, setSelectedStepId] = useState(null); // Bước đang chọn
-    const [isCreating, setIsCreating] = useState(false); // Trạng thái đang tạo thẻ
-    const navigate = useNavigate();
 
     // Khi chọn thẻ, tải các bước liên quan
     const selectCard = (cardId) => {
@@ -22,118 +19,126 @@ function CardManager() {
         }
     };
 
-    const selectStep = (stepId) => {
-        setSelectedStepId(stepId);
-    };
-
-    const updateInputValue = (stepId, subStepId, inputId, value) => {
-        const updatedSteps = steps.map((step) =>
-            step.id === stepId
-                ? {
-                    ...step,
-                    subSteps: step.subSteps.map((subStep) =>
-                        subStep.id === subStepId
-                            ? {
-                                ...subStep,
-                                inputs: subStep.inputs.map((input) =>
-                                    input.id === inputId ? { ...input, value } : input
-                                ),
-                            }
-                            : subStep
-                    ),
-                }
-                : step
-        );
-        setSteps(updatedSteps);
-    };
-
-    const createNewCard = () => {
-        setIsCreating(true);
-    };
-
-    const handleTemplateSelection = (templateId) => {
-        const template = templates.find((t) => t.id === templateId);
-        if (template) {
-            const newCard = {
-                id: Date.now().toString(),
-                name: `Thẻ từ ${template.name}`,
-                templateId: template.id,
-                steps: template.steps.map((step) => ({
-                    ...step,
-                    subSteps: step.subSteps.map((subStep) => ({
-                        ...subStep,
-                        inputs: subStep.inputs.map((input) => ({
-                            ...input,
-                            value: "",
-                        })),
-                    })),
-                })),
-            };
-            setCards([...cards, newCard]);
-            setIsCreating(false);
+    // Xóa thẻ
+    const deleteCard = (cardId) => {
+        const updatedCards = cards.filter((card) => card.id !== cardId);
+        setCards(updatedCards);
+        if (selectedCardId === cardId) {
+            setSelectedCardId(null);
+            setSteps([]);
         }
+    };
+
+    // Bắt đầu chỉnh sửa tên thẻ
+    const startEditing = (cardId) => {
+        setEditingCardId(cardId);
+    };
+
+    // Lưu tên thẻ
+    const saveCardName = (cardId, newName) => {
+        const updatedCards = cards.map((card) =>
+            card.id === cardId ? { ...card, name: newName } : card
+        );
+        setCards(updatedCards);
+        setEditingCardId(null);
     };
 
     return (
         <div className="card-manager-container">
             {/* Danh sách thẻ */}
             <div className="card-list">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <h3>Danh sách Thẻ</h3>
-                    <button
-                        onClick={createNewCard}
-                        style={{
-                            padding: "5px 10px",
-                            backgroundColor: "#007bff",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: "5px",
-                            cursor: "pointer",
-                        }}
-                    >
-                        Tạo Thẻ Mới
-                    </button>
-                </div>
-
-                {isCreating && (
-                    <div style={{ marginTop: "10px", border: "1px solid #ccc", padding: "10px" }}>
-                        <h4>Chọn Mẫu Thẻ</h4>
-                        <ul style={{ listStyle: "none", padding: 0 }}>
-                            {templates.map((template) => (
-                                <li
-                                    key={template.id}
+                <h3>Danh sách Thẻ</h3>
+                <ul>
+                    {cards.map((card) => (
+                        <li
+                            key={card.id}
+                            className={`card-item ${
+                                card.id === selectedCardId ? "selected" : ""
+                            }`}
+                        >
+                            {/* Hiển thị tên thẻ hoặc input sửa tên */}
+                            {editingCardId === card.id ? (
+                                <div style={{ display: "flex", alignItems: "center" }}>
+                                    <input
+                                        type="text"
+                                        defaultValue={card.name}
+                                        onBlur={(e) => saveCardName(card.id, e.target.value)}
+                                        autoFocus
+                                        style={{
+                                            padding: "5px",
+                                            border: "1px solid #ccc",
+                                            borderRadius: "5px",
+                                            marginRight: "10px",
+                                            width: "70%",
+                                        }}
+                                    />
+                                    <button
+                                        onClick={() => setEditingCardId(null)}
+                                        style={{
+                                            backgroundColor: "grey",
+                                            color: "white",
+                                            border: "none",
+                                            padding: "5px",
+                                            borderRadius: "5px",
+                                            cursor: "pointer",
+                                        }}
+                                    >
+                                        Hủy
+                                    </button>
+                                </div>
+                            ) : (
+                                <div
+                                    onClick={() => selectCard(card.id)}
                                     style={{
-                                        padding: "10px",
-                                        border: "1px solid #ccc",
-                                        borderRadius: "5px",
-                                        marginBottom: "5px",
-                                        cursor: "pointer",
-                                        backgroundColor: "#f9f9f9",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
                                     }}
-                                    onClick={() => handleTemplateSelection(template.id)}
                                 >
-                                    {template.name}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-
-                {!isCreating && (
-                    <ul>
-                        {cards.map((card) => (
-                            <li
-                                key={card.id}
-                                className={`card-item ${
-                                    card.id === selectedCardId ? "selected" : ""
-                                }`}
-                                onClick={() => selectCard(card.id)}
-                            >
-                                {card.name}
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                                    <span>{card.name}</span>
+                                    <div>
+                                        {/* Nút sửa */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Ngăn việc chọn thẻ khi nhấn nút sửa
+                                                startEditing(card.id);
+                                            }}
+                                            style={{
+                                                backgroundColor: "orange",
+                                                color: "white",
+                                                border: "none",
+                                                padding: "5px",
+                                                borderRadius: "5px",
+                                                cursor: "pointer",
+                                                marginLeft: "10px",
+                                            }}
+                                        >
+                                            Sửa Tên
+                                        </button>
+                                        {/* Nút xóa */}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // Ngăn việc chọn thẻ khi nhấn nút xóa
+                                                deleteCard(card.id);
+                                            }}
+                                            style={{
+                                                backgroundColor: "red",
+                                                color: "white",
+                                                border: "none",
+                                                padding: "5px",
+                                                borderRadius: "5px",
+                                                cursor: "pointer",
+                                                marginLeft: "10px",
+                                            }}
+                                        >
+                                            Xóa
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </li>
+                    ))}
+                </ul>
             </div>
 
             {/* Chi tiết thẻ */}
@@ -148,7 +153,7 @@ function CardManager() {
                                     className={`step ${
                                         step.id === selectedStepId ? "selected" : ""
                                     }`}
-                                    onClick={() => selectStep(step.id)}
+                                    onClick={() => setSelectedStepId(step.id)}
                                 >
                                     {step.name}
                                 </div>
@@ -169,9 +174,28 @@ function CardManager() {
                                                     <input
                                                         type={input.type}
                                                         value={input.value || ""}
-                                                        onChange={(e) =>
-                                                            updateInputValue(step.id, subStep.id, input.id, e.target.value)
-                                                        }
+                                                        onChange={(e) => {
+                                                            const updatedSteps = steps.map((s) =>
+                                                                s.id === step.id
+                                                                    ? {
+                                                                        ...s,
+                                                                        subSteps: s.subSteps.map((ss) =>
+                                                                            ss.id === subStep.id
+                                                                                ? {
+                                                                                    ...ss,
+                                                                                    inputs: ss.inputs.map((i) =>
+                                                                                        i.id === input.id
+                                                                                            ? { ...i, value: e.target.value }
+                                                                                            : i
+                                                                                    ),
+                                                                                }
+                                                                                : ss
+                                                                        ),
+                                                                    }
+                                                                    : s
+                                                            );
+                                                            setSteps(updatedSteps);
+                                                        }}
                                                     />
                                                 </div>
                                             ))}
