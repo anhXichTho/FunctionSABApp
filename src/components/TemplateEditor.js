@@ -27,7 +27,7 @@ function TemplateEditor() {
             ...template,
             steps: [
                 ...template.steps,
-                { id: generateUUID(), name: "", subSteps: [] },
+                { id: generateUUID(), name: "", subSteps: [], position: template.steps.length + 1 },
             ],
         });
     };
@@ -41,13 +41,37 @@ function TemplateEditor() {
         });
     };
 
+    const deleteStep = (stepId) => {
+        setTemplate({
+            ...template,
+            steps: template.steps.filter((step) => step.id !== stepId),
+        });
+    };
+
+    const moveStep = (stepId, direction) => {
+        const index = template.steps.findIndex((step) => step.id === stepId);
+        const updatedSteps = [...template.steps];
+        if (direction === "up" && index > 0) {
+            [updatedSteps[index - 1], updatedSteps[index]] = [
+                updatedSteps[index],
+                updatedSteps[index - 1],
+            ];
+        } else if (direction === "down" && index < updatedSteps.length - 1) {
+            [updatedSteps[index + 1], updatedSteps[index]] = [
+                updatedSteps[index],
+                updatedSteps[index + 1],
+            ];
+        }
+        setTemplate({ ...template, steps: updatedSteps });
+    };
+
     const addSubStep = (stepId) => {
         const step = template.steps.find((s) => s.id === stepId);
         const updatedStep = {
             ...step,
             subSteps: [
                 ...step.subSteps,
-                { id: generateUUID(), name: "", inputs: [] },
+                { id: generateUUID(), name: "", inputs: [], position: step.subSteps.length + 1 },
             ],
         };
         updateStep(stepId, updatedStep);
@@ -60,6 +84,15 @@ function TemplateEditor() {
             subSteps: step.subSteps.map((subStep) =>
                 subStep.id === subStepId ? newSubStep : subStep
             ),
+        };
+        updateStep(stepId, updatedStep);
+    };
+
+    const deleteSubStep = (stepId, subStepId) => {
+        const step = template.steps.find((s) => s.id === stepId);
+        const updatedStep = {
+            ...step,
+            subSteps: step.subSteps.filter((subStep) => subStep.id !== subStepId),
         };
         updateStep(stepId, updatedStep);
     };
@@ -85,6 +118,9 @@ function TemplateEditor() {
                                 updateStep(step.id, { ...step, name: e.target.value })
                             }
                         />
+                        <button onClick={() => moveStep(step.id, "up")}>↑</button>
+                        <button onClick={() => moveStep(step.id, "down")}>↓</button>
+                        <button onClick={() => deleteStep(step.id)}>Xóa</button>
                         <button onClick={() => addSubStep(step.id)}>Thêm Bước Con</button>
                         <ul>
                             {step.subSteps.map((subStep) => (
@@ -100,6 +136,9 @@ function TemplateEditor() {
                                             })
                                         }
                                     />
+                                    <button onClick={() => deleteSubStep(step.id, subStep.id)}>
+                                        Xóa
+                                    </button>
                                     <InputConfigurator
                                         inputs={subStep.inputs}
                                         setInputs={(newInputs) =>
